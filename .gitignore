@@ -1,0 +1,22 @@
+# OS cruft
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Large AF3 intermediate cache (MSA/template data, ~11MB, reproducible by rerunning AF3;
+# the actual outputs we care about -- model.cif, confidences, ranking_scores.csv -- are kept)
+**/output/*/*_data.json
+
+# GROMACS outputs (large binary trajectories/checkpoints, not source-controllable)
+*.trr
+*.xtc
+*.cpt
+*.edr
+*.tpr
+gromacs/
+
+# packmol scratch working directories
+packmol_solv_*/

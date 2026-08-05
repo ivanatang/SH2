@@ -1,0 +1,23 @@
+{
+  "name": "superbinder_SH2_pTyr_peptide",
+  "modelSeeds": [1],
+  "sequences": [
+    {
+      "protein": {
+        "id": "A",
+        "sequence": "DSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETVKGAYALSVSDFDNAKGLNVKHYLIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSK"
+      }
+    },
+    {
+      "protein": {
+        "id": "B",
+        "sequence": "DHEPIYEQWGW",
+        "modifications": [
+          {"ptmType": "PTR", "ptmPosition": 6}
+        ]
+      }
+    }
+  ],
+  "dialect": "alphafold3",
+  "version": 1
+}
