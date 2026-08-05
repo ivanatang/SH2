@@ -1,22 +1,42 @@
-# OS cruft
-.DS_Store
+# GROMACS trajectory and simulation output
+*.xtc
+*.trr
+*.edr
+*.cpt
+*.tpr
+*.gro
+*.top
+*.itp
+*.mdp
+*.xtc
+*.dcd
+*.err
+*.out
 
-# Python
+# Large data outputs
+*.dx
+*.mol2
+*.sdf
+
+# Python artifacts
 __pycache__/
 *.pyc
+*.pyo
 .ipynb_checkpoints/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# VS Code settings
+.vscode/
+
+# Claude code memory
+CLAUDE.md
 
 # Large AF3 intermediate cache (MSA/template data, ~11MB, reproducible by rerunning AF3;
 # the actual outputs we care about -- model.cif, confidences, ranking_scores.csv -- are kept)
 **/output/*/*_data.json
-
-# GROMACS outputs (large binary trajectories/checkpoints, not source-controllable)
-*.trr
-*.xtc
-*.cpt
-*.edr
-*.tpr
-gromacs/
 
 # packmol scratch working directories
 packmol_solv_*/
