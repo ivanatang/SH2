@@ -1,6 +1,6 @@
 ; Run parameters
 integrator              = md        ; leap-frog integrator
-nsteps                  = 250000000  ; 500 ns
+nsteps                  = 25000000  ; 50 ns
 dt                      = 0.002     ; 2 fs
 ; Output control
 nstenergy               = 25000      ; save energies every 10.0 ps
