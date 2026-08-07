@@ -7,15 +7,14 @@
 #SBATCH --partition=acpu
 #SBATCH --time=12:00:00
 #SBATCH --nodes=1
-#SBATCH --ntasks=64
-#SBATCH --cpus-per-task=1
-#SBATCH --constraint=ib
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=64
 #SBATCH --qos=cpu-normal
 #SBATCH --mail-user=ivana.tang@colorado.edu
 #SBATCH --mail-type=BEGIN,END,FAIL
 
 export TMPDIR=$SLURM_SCRATCH
-export SLURM_EXPORT_ENV=ALL
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 module purge
 module load gcc
@@ -31,19 +30,21 @@ TOP=$DIR/gromacs/sh2_superbinder_pTyr_dodecahedron.top
 SEQ_DIR=/scratch/alpine/ivta1597/SH2
 
 cd "$SEQ_DIR"
-mkdir -p prod_md_${SLURM_NTASKS}x${SLURM_CPUS_PER_TASK}
-cd prod_md_${SLURM_NTASKS}x${SLURM_CPUS_PER_TASK}
-gmx_mpi grompp -f $MDP/prod_md.mdp -c $SEQ_DIR/NPT/npt.gro -t $SEQ_DIR/NPT/npt.cpt -p $TOP -o prod_md_500ns.tpr
+mkdir -p prod_md_1x${SLURM_CPUS_PER_TASK}
+cd prod_md_1x${SLURM_CPUS_PER_TASK}
+gmx grompp -f $MDP/prod_md.mdp -c $SEQ_DIR/NPT/npt.gro -t $SEQ_DIR/NPT/npt.cpt -p $TOP -o prod_md_500ns.tpr
 
-# NOTE: unlike prod_md_PYR1_LCA.sh, this deliberately does NOT pass -dd/-npme.
-# Their script hand-tunes those (DD grid 6x4x2 + 16 PME ranks) for the PYR1+LCA
-# system's specific size/box -- I have no way to verify that same grid is valid
-# for this (smaller, differently-shaped dodecahedron) system without a real
-# MPI-enabled GROMACS build to test against (this Mac's local `gmx` is
-# thread-MPI only, no true multi-rank MPI). An invalid manual DD grid makes
-# mdrun fail immediately, which you do not want discovered 20 hours into a
-# 24-hour allocation. Letting mdrun auto-decompose is slower to start (it logs
-# its chosen grid near the top of the .log) but guaranteed valid. Once you've
-# seen what it picks and how it scales, this can be replaced with an explicit,
-# actually-verified -dd/-npme for future runs.
-mpirun -np $SLURM_NTASKS gmx_mpi mdrun -deffnm prod_md_500ns -ntomp $SLURM_CPUS_PER_TASK
+# Single-node thread-MPI (no mpirun/gmx_mpi), matching the already-working
+# em_SH2.sh/equil_SH2.sh pattern -- NOT the real-MPI (gmx_mpi + mpirun -np 64)
+# approach borrowed from prod_md_PYR1_LCA.sh's 64-rank / hand-tuned DD grid.
+# That approach caused a real, observed failure: the first attempt at this run
+# only reached step 110720 (221 ps of the requested 50000 ps) after most of a
+# 12-hour allocation -- ~0.46 ns/day, with the .log showing severe DD load
+# imbalance ("force 143.3%") and a bad PME/force ratio. 64 real MPI ranks on a
+# single node is very likely over-decomposed for a ~21k-atom system; this
+# job was always --nodes=1 anyway, so real inter-process MPI was pure overhead
+# for zero benefit. No explicit -ntomp/-ntmpi here, same as em/equil -- relies
+# on OMP_NUM_THREADS above and thread-MPI's own auto-tuning, which is the
+# GROMACS-recommended default for single-node runs (unlike a hand-guessed DD
+# grid for real MPI, this auto-tuning is specifically designed for this case).
+gmx mdrun -deffnm prod_md_500ns
