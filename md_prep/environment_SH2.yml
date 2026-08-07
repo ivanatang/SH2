@@ -1,0 +1,36 @@
+# Portable environment spec for the SH2 conda env, for recreating it on Alpine.
+#
+# NOT a `conda env export` dump -- that command produces macOS/osx-arm64-specific
+# build hashes (e.g. openmm's "khronos"/Metal build) that don't exist on Alpine's
+# linux-64 nodes. This lists just the top-level packages actually used by the
+# project; conda-forge resolves appropriate linux-64 builds for each.
+#
+# Core scientific stack is version-pinned to match what was actually debugged
+# and verified working locally (see conversation history: the NAGL-charges fix
+# for large peptides, the residue-metadata fix for GROMACS export) -- a newer
+# openff-toolkit/openff-interchange could plausibly change relevant API behavior.
+# Everything else (jupyter/utility packages) is left unpinned.
+#
+# Create on Alpine with:
+#   conda env create -f environment_SH2.yml
+# (or `mamba env create -f environment_SH2.yml` if mamba is available -- faster solve)
+
+name: SH2
+channels:
+  - conda-forge
+dependencies:
+  - python=3.13
+  - rdkit=2025.03.6
+  - openmm=8.3.1
+  - pdbfixer=1.12
+  - openff-toolkit=0.17.0
+  - openff-interchange=0.4.7
+  - openff-nagl=0.5.3
+  - openff-nagl-models
+  - ambertools=24.8       # provides antechamber/sqm; packmol-memgen (below) provides the packmol binary
+  - numpy
+  - nglview
+  - ipykernel
+  - pip
+  - pip:
+      - packmol-memgen
