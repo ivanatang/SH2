@@ -9,6 +9,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=48
 #SBATCH --cpus-per-task=1
+#SBATCH --exclusive
 #SBATCH --qos=cpu-normal
 #SBATCH --mail-user=ivana.tang@colorado.edu
 #SBATCH --mail-type=BEGIN,END,FAIL
@@ -25,6 +26,13 @@
 #
 # Usage: sbatch xtnd_prod_SH2.sh
 # (resubmit again, unmodified, if it runs out of wall time again before 50 ns)
+#
+# --exclusive added after a resumed run measured ~0.35 ns/day (vs. the
+# benchmarked 260.36 ns/day for this same 48-rank config) with severe DD
+# load imbalance (148-193%) from the very first step -- too immediate/severe
+# to be atom-distribution skew, consistent with CPU contention from another
+# job sharing the node. --exclusive guarantees the whole node so this
+# doesn't recur.
 
 export TMPDIR=$SLURM_SCRATCH
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK

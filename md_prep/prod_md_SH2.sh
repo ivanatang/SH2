@@ -9,6 +9,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=48
 #SBATCH --cpus-per-task=1
+#SBATCH --exclusive
 #SBATCH --qos=cpu-normal
 #SBATCH --mail-user=ivana.tang@colorado.edu
 #SBATCH --mail-type=BEGIN,END,FAIL
