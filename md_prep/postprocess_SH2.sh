@@ -200,10 +200,22 @@ fi
 # ── Step 7: Peptide<->protein minimum distance ─────────────────────────────────
 # Dissociation check: does this ever depart from van-der-Waals contact
 # (~0.3-0.4 nm), which would indicate the peptide unbound?
+#
+# IMPORTANT: computed on the RAW trajectory ($XTC), not $FIT_XTC. gmx trjconv
+# -fit rot+trans rotates coordinates but does NOT rotate the stored box
+# vectors to match. gmx mindist/gmx distance apply their own periodic-image
+# correction using those box vectors by default, so on a rotated-but-not-
+# rebox'd trajectory they can spuriously wrap an atom into the wrong image,
+# producing large fake "jumps" that look like transient dissociation but
+# aren't real -- confirmed by direct comparison: the same window computed on
+# $FIT_XTC showed wild 0.02-0.65 nm swings where the raw trajectory shows a
+# flat 0.25-0.28 nm. The raw trajectory's box vectors are always internally
+# consistent with its coordinates, so mindist's built-in PBC handling (-pbc
+# yes, default) is correct there without needing pbc.xtc/fit.xtc at all.
 if should_run "$OUT_DIR/peptide_protein_mindist.xvg"; then
-    echo "[7/11] mindist Peptide_heavy<->Protein-H → peptide_protein_mindist.xvg"
+    echo "[7/11] mindist Peptide_heavy<->Protein-H (raw trajectory) → peptide_protein_mindist.xvg"
     echo "Peptide_heavy Protein-H" | "$GMX" mindist \
-        -s "$TPR" -f "$FIT_XTC" -n "$NDX" \
+        -s "$TPR" -f "$XTC" -n "$NDX" \
         -od "$OUT_DIR/peptide_protein_mindist.xvg"
 else
     echo "[7/11] SKIP peptide_protein_mindist.xvg (exists)"
@@ -214,10 +226,12 @@ fi
 # primary observable for whether the peptide's phosphate stayed engaged in
 # the engineered superbinder pocket (V183/A188/L206) throughout production,
 # vs. drifting away or dissociating.
+#
+# Computed on the RAW trajectory -- see step 7's comment for why.
 if should_run "$OUT_DIR/phosphate_pocket_mindist.xvg"; then
-    echo "[8/11] mindist Phosphate<->Pocket_muts_heavy → phosphate_pocket_mindist.xvg"
+    echo "[8/11] mindist Phosphate<->Pocket_muts_heavy (raw trajectory) → phosphate_pocket_mindist.xvg"
     echo "Phosphate Pocket_muts_heavy" | "$GMX" mindist \
-        -s "$TPR" -f "$FIT_XTC" -n "$NDX" \
+        -s "$TPR" -f "$XTC" -n "$NDX" \
         -od "$OUT_DIR/phosphate_pocket_mindist.xvg"
 else
     echo "[8/11] SKIP phosphate_pocket_mindist.xvg (exists)"
@@ -226,10 +240,12 @@ fi
 # ── Step 9: Phosphate<->pocket-mutation center-of-mass distance ───────────────
 # Smoother companion signal to the mindist above (mindist can be noisy frame
 # to frame since it tracks whichever single atom pair is closest at each step).
+#
+# Computed on the RAW trajectory -- see step 7's comment for why.
 if should_run "$OUT_DIR/phosphate_pocket_comdist.xvg"; then
-    echo "[9/11] distance (COM) Phosphate<->Pocket_muts_heavy → phosphate_pocket_comdist.xvg"
+    echo "[9/11] distance (COM) Phosphate<->Pocket_muts_heavy (raw trajectory) → phosphate_pocket_comdist.xvg"
     "$GMX" distance \
-        -s "$TPR" -f "$FIT_XTC" -n "$NDX" \
+        -s "$TPR" -f "$XTC" -n "$NDX" \
         -select 'com of group "Phosphate" plus com of group "Pocket_muts_heavy"' \
         -oall "$OUT_DIR/phosphate_pocket_comdist.xvg"
 else
