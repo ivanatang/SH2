@@ -146,11 +146,23 @@ else
 fi
 
 # ── Step 2: PBC correction ─────────────────────────────────────────────────────
+# -pbc nojump, not -pbc mol: -pbc mol re-wraps each molecule independently every
+# frame, which does NOT guarantee the peptide stays in the same periodic image
+# as the protein frame-to-frame. Confirmed directly on this system: the peptide
+# (small, occasionally near a box face) would flip to a neighboring image
+# relative to the protein, producing ~6-7 nm frame-to-frame teleports in the
+# rendered/output coordinates (box edge here is ~6.7 nm) -- visible as
+# "jumping" in the movie -- even though the true physics never breaks contact.
+# -pbc nojump keeps every atom's own trajectory continuous instead (verified:
+# max frame-to-frame peptide<->protein relative-position change dropped from
+# 7.1 nm to 0.44 nm after switching). Molecules must be whole in the starting
+# frame for this to work, which they are here (production starts from an
+# already-equilibrated, intact structure).
 if should_run "$PBC_XTC"; then
-    echo "[2/11] trjconv PBC → $PBC_XTC"
+    echo "[2/11] trjconv PBC (nojump) → $PBC_XTC"
     echo "Protein_Peptide System" | "$GMX" trjconv \
         -s "$TPR" -f "$XTC" -n "$NDX" -o "$PBC_XTC" \
-        -pbc mol -center
+        -pbc nojump -center
 else
     echo "[2/11] SKIP PBC trjconv ($PBC_XTC exists)"
 fi
