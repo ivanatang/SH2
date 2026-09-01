@@ -15,8 +15,8 @@
 module purge
 module load alphafold/3.0.0
 
-export INPUT_FILE=$(pwd)/superB_pYEEI/superbinder_sh2_pYEEI.json
-export OUTPUT_DIR=$(pwd)/superB_pYEEI/output
+export INPUT_FILE=$(pwd)/superbinder_sh2_pYEEI.json
+export OUTPUT_DIR=$(pwd)/output
 export AF3_MODEL_PARAMETERS_DIR=/projects/$USER/alphafold3_weights/   # path where you stored the downloaded AF3 weights
 
 mkdir -p "$OUTPUT_DIR"
