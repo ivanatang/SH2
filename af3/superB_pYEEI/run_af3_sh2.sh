@@ -7,8 +7,8 @@
 #SBATCH --qos=gpu-normal
 #SBATCH --gres=gpu:l40:1
 #SBATCH --account=ucb351_asc4
-#SBATCH --output=output_af3_sh2_%j.out
-#SBATCH --error=error_af3_sh2_%j.err
+#SBATCH --output=logs/output_af3_sh2_%j.out
+#SBATCH --error=logs/error_af3_sh2_%j.err
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=ivana.tang@colorado.edu
 
