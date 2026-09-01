@@ -45,6 +45,12 @@ CLAUDE.md
 # the actual outputs we care about -- model.cif, confidences, ranking_scores.csv -- are kept)
 **/output/*/*_data.json
 
+# Same policy for AlphaFold Server (web UI) output dirs, which use a different
+# layout (msas/, templates/, *_full_data_N.json) than the output/ dirs above
+af3/**/msas/
+af3/**/templates/
+af3/**/*_full_data_*.json
+
 # packmol scratch working directories
 packmol_solv_*/
 
