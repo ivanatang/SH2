@@ -1,0 +1,24 @@
+[ defaults ]
+; nbfunc	comb-rule	gen-pairs	fudgeLJ	fudgeQQ
+     1	     2	yes   	0.500000	0.833333
+
+#include "boltz_c1_dodecahedron_atomtypes.itp"
+#include "boltz_c1_dodecahedron_protein.itp"
+#ifdef POSRES
+#include "posre_protein.itp"
+#endif
+#include "boltz_c1_dodecahedron_pTyr_peptide.itp"
+#include "boltz_c1_dodecahedron_SOL.itp"
+#include "boltz_c1_dodecahedron_NA.itp"
+
+[ system ]
+;name
+FOO
+
+[ molecules ]
+;name	number
+protein	1
+pTyr_peptide	1
+SOL	5749
+NA	2
+
