@@ -10,16 +10,21 @@ scratch output tree (kept separate per seed so 8 concurrent/sequential jobs
 don't collide).
 
 Production target: 200 ns (mdp/prod_md_200ns.mdp, nsteps=100000000). At the
-benchmarked 260.36 ns/day (see prod_md_SH2.sh), that's ~18.4 h of compute,
-so the initial prod script requests 24h (~30% margin over the benchmark)
-and should complete the full 200 ns in one submission under normal
-conditions. Each seed also gets a resume script (matching the existing
-xtnd_prod_SH2.sh pattern exactly) as a fallback -- not expected to be
-needed, but there if the 24h allocation gets interrupted (node issue,
-QOS preemption) or actual throughput comes in below the benchmark. Verify
-24h is actually allowed under cpu-normal's QOS max walltime before relying
-on it (`sacctmgr show qos cpu-normal format=Name,MaxWall`) -- this wasn't
-checked against the cluster, only computed from the benchmarked ns/day.
+benchmarked 260.36 ns/day (see prod_md_SH2.sh), that's ~18.4 h of compute --
+too long for a single 6h cpu-normal allocation, so (matching the existing
+xtnd_prod_SH2.sh pattern exactly) each seed gets an initial prod script plus
+a resume script meant to be resubmitted, unmodified, as many times as needed
+(~3-4x per seed at this throughput) until prod_md_200ns.mdp's nsteps target
+is reached.
+
+(A 24h single-submission version was tried and rejected by the cluster at
+sbatch time -- "Error 22: The oversubscribe Slurm directive cannot be used
+with the provided partition" -- with --time as the only functional diff
+from the known-working 6h prod_md_SH2.sh. That points to cpu-normal's QOS
+capping walltime somewhere below 24h; reverted to the proven 6h+resume
+pattern rather than guess at an untested value in between. If you want a
+single-shot run, find the real cap with
+`sacctmgr show qos cpu-normal format=Name,MaxWall` and set --time to that.)
 
 Usage: python3 md_prep/generate_seed_slurm_scripts.py
 """
@@ -96,9 +101,8 @@ gmx grompp -f $MDP/prod_md_200ns.mdp -c $SEQ_DIR/NPT/npt.gro -t $SEQ_DIR/NPT/npt
 # Same benchmark-determined settings as prod_md_SH2.sh: 48-rank real MPI,
 # ntomp=1, auto DD/PME (measured 260.36 +/- 2.54 ns/day for this system size
 # on this partition -- see prod_md_SH2.sh's comment for the full benchmark
-# rationale). 200 ns at that rate is ~18.4 h of compute; this script's 24h
-# allocation should cover that in one submission. If it's interrupted before
-# finishing (node issue, QOS preemption, lower actual throughput), resubmit
+# rationale). 200 ns at that rate is ~18.4 h of compute, well past this
+# script's 6h allocation -- this launches the run and checkpoints; resubmit
 # resume_prod_{seed}.sh (unmodified, repeatedly) to continue to completion.
 mpirun -np $SLURM_NTASKS gmx_mpi mdrun -deffnm prod_md_200ns -ntomp $SLURM_CPUS_PER_TASK
 """
@@ -180,7 +184,7 @@ for seed in SEEDS:
 
     prod_extra = "#SBATCH --ntasks=48\n#SBATCH --cpus-per-task=1\n#SBATCH --exclusive\n"
     prod = COMMON_HEADER.format(
-        job_name=f"{seed}_prod", tag=f"prod_{seed}", time="24:00:00",
+        job_name=f"{seed}_prod", tag=f"prod_{seed}", time="06:00:00",
         extra_sbatch=prod_extra, proj_dir=PROJ_DIR, seed=seed, scratch_root=SCRATCH_ROOT,
     ) + PROD_BODY.format(seed=seed)
     write(f"{seed_dir}/prod_md_{seed}.sh", prod)
