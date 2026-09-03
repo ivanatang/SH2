@@ -5,7 +5,7 @@
 #SBATCH --error=error_prod_boltz_c1_%j.err
 #SBATCH --account=ucb351_asc4
 #SBATCH --partition=acpu
-#SBATCH --time=06:00:00
+#SBATCH --time=24:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=48
 #SBATCH --cpus-per-task=1
@@ -38,7 +38,8 @@ gmx grompp -f $MDP/prod_md_200ns.mdp -c $SEQ_DIR/NPT/npt.gro -t $SEQ_DIR/NPT/npt
 # Same benchmark-determined settings as prod_md_SH2.sh: 48-rank real MPI,
 # ntomp=1, auto DD/PME (measured 260.36 +/- 2.54 ns/day for this system size
 # on this partition -- see prod_md_SH2.sh's comment for the full benchmark
-# rationale). 200 ns at that rate is ~18.4 h of compute, well past this
-# script's 6h allocation -- this launches the run and checkpoints; resubmit
+# rationale). 200 ns at that rate is ~18.4 h of compute; this script's 24h
+# allocation should cover that in one submission. If it's interrupted before
+# finishing (node issue, QOS preemption, lower actual throughput), resubmit
 # resume_prod_boltz_c1.sh (unmodified, repeatedly) to continue to completion.
 mpirun -np $SLURM_NTASKS gmx_mpi mdrun -deffnm prod_md_200ns -ntomp $SLURM_CPUS_PER_TASK
