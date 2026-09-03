@@ -44,6 +44,7 @@ SEEDS="${*:-$ALL_SEEDS}"
 TARGET_STEPS=100000000   # prod_md_200ns.mdp nsteps
 DT_NS=0.000002           # 0.002 ps timestep, in ns
 BENCHMARK_NS_DAY=260.36  # prod_md_SH2.sh benchmark, --exclusive, for comparison only
+JOB_WALLTIME_H=22        # prod_md_<seed>.sh / resume_prod_<seed>.sh --time
 
 sacct_job () {
   # $1 = job name pattern (matches "<seed>_prod" or "<seed>_prod_xtnd") --
@@ -115,20 +116,26 @@ for seed in $SEEDS; do
   pct=$(echo "scale=1; $last_step * 100 / $TARGET_STEPS" | bc)
 
   ns_day="N/A"; eta_h="N/A"
-  if [ -n "$elapsed_h" ] && [ "$(echo "$elapsed_h > 0" | bc)" = "1" ]; then
-    ns_day=$(echo "scale=2; $current_ns / ($elapsed_h / 24)" | bc)
+  if [ -n "$elapsed_h" ] && [ "$(echo "scale=4; $elapsed_h > 0" | bc)" = "1" ]; then
+    # single division (current_ns*24/elapsed_h), not current_ns/(elapsed_h/24) --
+    # the latter truncates the small intermediate elapsed_h/24 (~0.05-0.1) at
+    # whatever `scale` is set, inflating the result (verified: this previously
+    # reported e.g. 164.27 ns/day for a run that was actually at 148.65).
+    ns_day=$(echo "scale=4; $current_ns * 24 / $elapsed_h" | bc)
     remaining_ns=$(echo "scale=3; ($TARGET_STEPS - $last_step) * $DT_NS" | bc)
-    if [ "$(echo "$ns_day > 0" | bc)" = "1" ]; then
+    if [ "$(echo "scale=4; $ns_day > 0" | bc)" = "1" ]; then
       eta_h=$(echo "scale=1; $remaining_ns / $ns_day * 24" | bc)
     fi
-    slow_flag=""
-    if [ "$(echo "$ns_day < $BENCHMARK_NS_DAY / 2" | bc)" = "1" ]; then
-      slow_flag=" <-- SLOW (< 50% of ${BENCHMARK_NS_DAY} ns/day benchmark; check for node-sharing contention)"
+    flag=""
+    if [ "$(echo "scale=4; $ns_day < $BENCHMARK_NS_DAY / 2" | bc)" = "1" ]; then
+      flag=" <-- SLOW (< 50% of ${BENCHMARK_NS_DAY} ns/day benchmark; check for node-sharing contention)"
+    elif [ "$eta_h" != "N/A" ] && [ "$(echo "scale=4; $elapsed_h + $eta_h > $JOB_WALLTIME_H" | bc)" = "1" ]; then
+      flag=" <-- will NOT finish within ${JOB_WALLTIME_H}h at this rate, expect to need resume_prod_${seed}.sh"
     fi
   fi
 
   printf "%-10s | %-10s %-10s %-12s %-8s | %-12s %-9s %-10s%s\n" \
-    "$seed" "$job_label" "$state" "$elapsed_h" "${pct}%" "${current_ns}ns" "$ns_day" "$eta_h" "$slow_flag"
+    "$seed" "$job_label" "$state" "$elapsed_h" "${pct}%" "${current_ns}ns" "$ns_day" "$eta_h" "$flag"
 done
 
 echo
