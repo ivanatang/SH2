@@ -5,11 +5,10 @@
 #SBATCH --error=error_prod_boltz_c3_%j.err
 #SBATCH --account=ucb351_asc4
 #SBATCH --partition=acpu
-#SBATCH --time=06:00:00
+#SBATCH --time=22:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=48
 #SBATCH --cpus-per-task=1
-#SBATCH --exclusive
 #SBATCH --qos=cpu-normal
 #SBATCH --mail-user=ivana.tang@colorado.edu
 #SBATCH --mail-type=BEGIN,END,FAIL
