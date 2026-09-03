@@ -37,7 +37,11 @@ gmx grompp -f $MDP/prod_md_200ns.mdp -c $SEQ_DIR/NPT/npt.gro -t $SEQ_DIR/NPT/npt
 # Same benchmark-determined settings as prod_md_SH2.sh: 48-rank real MPI,
 # ntomp=1, auto DD/PME (measured 260.36 +/- 2.54 ns/day for this system size
 # on this partition -- see prod_md_SH2.sh's comment for the full benchmark
-# rationale). 200 ns at that rate is ~18.4 h of compute, well past this
-# script's 6h allocation -- this launches the run and checkpoints; resubmit
-# resume_prod_af3_c4.sh (unmodified, repeatedly) to continue to completion.
+# rationale). NOTE: unlike prod_md_SH2.sh/xtnd_prod_SH2.sh, --exclusive is
+# NOT used here -- sbatch rejects it on this partition/qos ("Error 22: The
+# oversubscribe Slurm directive cannot be used with the provided partition").
+# xtnd_prod_SH2.sh's own comment says --exclusive was added after a run
+# without it measured ~0.35 ns/day from node-sharing DD load imbalance, so
+# throughput here isn't guaranteed to match the 260.36 ns/day benchmark --
+# check it with check_prod_performance.sh once running, don't just assume.
 mpirun -np $SLURM_NTASKS gmx_mpi mdrun -deffnm prod_md_200ns -ntomp $SLURM_CPUS_PER_TASK

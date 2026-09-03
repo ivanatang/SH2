@@ -10,21 +10,23 @@ scratch output tree (kept separate per seed so 8 concurrent/sequential jobs
 don't collide).
 
 Production target: 200 ns (mdp/prod_md_200ns.mdp, nsteps=100000000). At the
-benchmarked 260.36 ns/day (see prod_md_SH2.sh), that's ~18.4 h of compute --
-too long for a single 6h cpu-normal allocation, so (matching the existing
-xtnd_prod_SH2.sh pattern exactly) each seed gets an initial prod script plus
-a resume script meant to be resubmitted, unmodified, as many times as needed
-(~3-4x per seed at this throughput) until prod_md_200ns.mdp's nsteps target
-is reached.
+benchmarked 260.36 ns/day (see prod_md_SH2.sh), that's ~18.4 h of compute,
+so prod_md_{seed}.sh requests 22h (~20% margin) and should complete the
+full 200 ns in one submission under normal conditions. resume_prod_{seed}.sh
+is still generated as a fallback (matching xtnd_prod_SH2.sh's -s/-cpi/-append
+pattern) in case a run gets interrupted before finishing.
 
-(A 24h single-submission version was tried and rejected by the cluster at
-sbatch time -- "Error 22: The oversubscribe Slurm directive cannot be used
-with the provided partition" -- with --time as the only functional diff
-from the known-working 6h prod_md_SH2.sh. That points to cpu-normal's QOS
-capping walltime somewhere below 24h; reverted to the proven 6h+resume
-pattern rather than guess at an untested value in between. If you want a
-single-shot run, find the real cap with
-`sacctmgr show qos cpu-normal format=Name,MaxWall` and set --time to that.)
+IMPORTANT: unlike prod_md_SH2.sh/xtnd_prod_SH2.sh, neither prod nor resume
+script here uses --exclusive -- sbatch rejects it on this partition/qos
+("Error 22: The oversubscribe Slurm directive cannot be used with the
+provided partition"). An earlier attempt misdiagnosed this as a walltime
+issue (24h + --exclusive was rejected, 6h + --exclusive had "worked" before,
+so walltime looked like the variable) before confirming --exclusive itself
+is the blocker, independent of walltime. Since xtnd_prod_SH2.sh's own
+comment documents a ~0.35 ns/day node-sharing slowdown without --exclusive
+on the original single-system runs, throughput here isn't guaranteed to
+match the 260.36 ns/day benchmark -- use check_prod_performance.sh once
+jobs are running to confirm actual throughput rather than assuming it.
 
 Usage: python3 md_prep/generate_seed_slurm_scripts.py
 """
@@ -101,9 +103,13 @@ gmx grompp -f $MDP/prod_md_200ns.mdp -c $SEQ_DIR/NPT/npt.gro -t $SEQ_DIR/NPT/npt
 # Same benchmark-determined settings as prod_md_SH2.sh: 48-rank real MPI,
 # ntomp=1, auto DD/PME (measured 260.36 +/- 2.54 ns/day for this system size
 # on this partition -- see prod_md_SH2.sh's comment for the full benchmark
-# rationale). 200 ns at that rate is ~18.4 h of compute, well past this
-# script's 6h allocation -- this launches the run and checkpoints; resubmit
-# resume_prod_{seed}.sh (unmodified, repeatedly) to continue to completion.
+# rationale). NOTE: unlike prod_md_SH2.sh/xtnd_prod_SH2.sh, --exclusive is
+# NOT used here -- sbatch rejects it on this partition/qos ("Error 22: The
+# oversubscribe Slurm directive cannot be used with the provided partition").
+# xtnd_prod_SH2.sh's own comment says --exclusive was added after a run
+# without it measured ~0.35 ns/day from node-sharing DD load imbalance, so
+# throughput here isn't guaranteed to match the 260.36 ns/day benchmark --
+# check it with check_prod_performance.sh once running, don't just assume.
 mpirun -np $SLURM_NTASKS gmx_mpi mdrun -deffnm prod_md_200ns -ntomp $SLURM_CPUS_PER_TASK
 """
 
@@ -114,11 +120,10 @@ RESUME_HEADER = """#!/bin/bash
 #SBATCH --error=error_{tag}_%j.err
 #SBATCH --account=ucb351_asc4
 #SBATCH --partition=acpu
-#SBATCH --time=06:00:00
+#SBATCH --time=22:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=48
 #SBATCH --cpus-per-task=1
-#SBATCH --exclusive
 #SBATCH --qos=cpu-normal
 #SBATCH --mail-user=ivana.tang@colorado.edu
 #SBATCH --mail-type=BEGIN,END,FAIL
@@ -126,9 +131,13 @@ RESUME_HEADER = """#!/bin/bash
 # Resumes an interrupted prod_md_{seed}.sh run from its checkpoint, continuing
 # toward the SAME original target (prod_md_200ns.mdp's nsteps=100000000, i.e.
 # 200 ns -- NOT extending past 200 ns, just finishing the run that ran out of
-# wall time). Mirrors xtnd_prod_SH2.sh exactly (same -s/-cpi/-append pattern,
-# same --exclusive -- added there after a resumed run measured ~0.35 ns/day
-# from node-sharing DD load imbalance; kept here from the start).
+# wall time). Mirrors xtnd_prod_SH2.sh's -s/-cpi/-append pattern, but WITHOUT
+# --exclusive (matching prod_md_{seed}.sh) -- this partition/qos rejects it
+# at sbatch time ("Error 22: The oversubscribe Slurm directive cannot be
+# used with the provided partition"), unlike the original single-system
+# scripts where it worked. xtnd_prod_SH2.sh's own comment documents a
+# ~0.35 ns/day node-sharing slowdown without --exclusive, so check actual
+# throughput with check_prod_performance.sh rather than assuming it's fine.
 #
 # Usage: sbatch resume_prod_{seed}.sh
 # (resubmit again, unmodified, if it runs out of wall time again before 200 ns)
@@ -182,9 +191,9 @@ for seed in SEEDS:
     ) + EQUIL_BODY
     write(f"{seed_dir}/equil_{seed}.sh", eq)
 
-    prod_extra = "#SBATCH --ntasks=48\n#SBATCH --cpus-per-task=1\n#SBATCH --exclusive\n"
+    prod_extra = "#SBATCH --ntasks=48\n#SBATCH --cpus-per-task=1\n"
     prod = COMMON_HEADER.format(
-        job_name=f"{seed}_prod", tag=f"prod_{seed}", time="06:00:00",
+        job_name=f"{seed}_prod", tag=f"prod_{seed}", time="22:00:00",
         extra_sbatch=prod_extra, proj_dir=PROJ_DIR, seed=seed, scratch_root=SCRATCH_ROOT,
     ) + PROD_BODY.format(seed=seed)
     write(f"{seed_dir}/prod_md_{seed}.sh", prod)

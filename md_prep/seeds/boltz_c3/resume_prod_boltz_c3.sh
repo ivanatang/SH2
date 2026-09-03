@@ -5,11 +5,10 @@
 #SBATCH --error=error_resume_boltz_c3_%j.err
 #SBATCH --account=ucb351_asc4
 #SBATCH --partition=acpu
-#SBATCH --time=06:00:00
+#SBATCH --time=22:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=48
 #SBATCH --cpus-per-task=1
-#SBATCH --exclusive
 #SBATCH --qos=cpu-normal
 #SBATCH --mail-user=ivana.tang@colorado.edu
 #SBATCH --mail-type=BEGIN,END,FAIL
@@ -17,9 +16,13 @@
 # Resumes an interrupted prod_md_boltz_c3.sh run from its checkpoint, continuing
 # toward the SAME original target (prod_md_200ns.mdp's nsteps=100000000, i.e.
 # 200 ns -- NOT extending past 200 ns, just finishing the run that ran out of
-# wall time). Mirrors xtnd_prod_SH2.sh exactly (same -s/-cpi/-append pattern,
-# same --exclusive -- added there after a resumed run measured ~0.35 ns/day
-# from node-sharing DD load imbalance; kept here from the start).
+# wall time). Mirrors xtnd_prod_SH2.sh's -s/-cpi/-append pattern, but WITHOUT
+# --exclusive (matching prod_md_boltz_c3.sh) -- this partition/qos rejects it
+# at sbatch time ("Error 22: The oversubscribe Slurm directive cannot be
+# used with the provided partition"), unlike the original single-system
+# scripts where it worked. xtnd_prod_SH2.sh's own comment documents a
+# ~0.35 ns/day node-sharing slowdown without --exclusive, so check actual
+# throughput with check_prod_performance.sh rather than assuming it's fine.
 #
 # Usage: sbatch resume_prod_boltz_c3.sh
 # (resubmit again, unmodified, if it runs out of wall time again before 200 ns)
