@@ -60,22 +60,30 @@ for seed in $SEEDS; do
   echo "=== $seed ==="
 
   # 1. Log warning signatures for clashes/blow-ups/instability.
-  grep -nE "Fatal error|LINCS WARNING|1-4 interaction|can not be settled|Water molecule starting|pressure scaling|maximum distance between bonded" \
-    "$log" > "$QC/log_warnings.txt" 2>/dev/null
-  wc -l < "$QC/log_warnings.txt" > "$QC/log_warnings_count.txt"
+  if [ ! -f "$QC/log_warnings_count.txt" ]; then
+    grep -nE "Fatal error|LINCS WARNING|1-4 interaction|can not be settled|Water molecule starting|pressure scaling|maximum distance between bonded" \
+      "$log" > "$QC/log_warnings.txt" 2>/dev/null
+    wc -l < "$QC/log_warnings.txt" > "$QC/log_warnings_count.txt"
+  fi
 
   # 2. Potential/total energy + temperature trace (NaN/Inf or spikes -> blow-up).
-  printf "Potential\nTotal-Energy\nTemperature\n\n" | \
-    gmx_mpi energy -s "$tpr" -f "$edr" -o "$QC/energy.xvg" -xvg none
+  if [ ! -s "$QC/energy.xvg" ]; then
+    printf "Potential\nTotal-Energy\nTemperature\n\n" | \
+      gmx_mpi energy -s "$tpr" -f "$edr" -o "$QC/energy.xvg" -xvg none
+  fi
 
   # 3. Protein backbone RMSD to the tpr's own reference (t=0 of this 200ns target).
-  printf "Backbone\nBackbone\n" | \
-    gmx_mpi rms -s "$tpr" -f "$xtc" -o "$QC/rmsd_backbone.xvg" -tu ns -xvg none
+  if [ ! -s "$QC/rmsd_backbone.xvg" ]; then
+    printf "Backbone\nBackbone\n" | \
+      gmx_mpi rms -s "$tpr" -f "$xtc" -o "$QC/rmsd_backbone.xvg" -tu ns -xvg none
+  fi
 
   # 4. Protein-peptide minimum distance + contact count (dissociation check).
-  printf "Protein\nLIG\n" | \
-    gmx_mpi mindist -s "$tpr" -f "$xtc" -o "$QC/mindist_prot_lig.xvg" \
-      -on "$QC/numcontacts_prot_lig.xvg" -d "$CONTACT_CUTOFF_NM" -tu ns -xvg none
+  if [ ! -s "$QC/mindist_prot_lig.xvg" ] || [ ! -s "$QC/numcontacts_prot_lig.xvg" ]; then
+    printf "Protein\nLIG\n" | \
+      gmx_mpi mindist -s "$tpr" -f "$xtc" -od "$QC/mindist_prot_lig.xvg" \
+        -on "$QC/numcontacts_prot_lig.xvg" -d "$CONTACT_CUTOFF_NM" -tu ns -xvg none
+  fi
 
   echo "$seed: done -> $QC"
 done
